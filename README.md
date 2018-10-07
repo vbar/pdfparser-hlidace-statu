@@ -19,13 +19,13 @@ https://www.mpo.cz/cz/energetika/statistika/statistika-cerpacich-stanic-pohonnyc
 as a PDF file containing a simple table. The make-json.py script
 converts it into a machine-readable format.
 
-make-json.py depends on PDFMiner ( github.com/euske/pdfminer ) and
-pdftables ( github.com/okfn/pdftables ).  For configuration, it
+make-json.py depends on PDFMiner (www.github.com/euske/pdfminer) and
+pdftables (www.github.com/okfn/pdftables). For configuration, it
 requires a config.json file in the current directory, with a mandatory
 setting "sourceFile" for path to the downloaded PDF. The "targetDir"
 setting specifies the output directory, by default "json". A separate
 file is generated there for every table row, in a format suitable for
-upload by github.com/vbar/krmic-hlidace-statu . Note the script
+upload by www.github.com/vbar/krmic-hlidace-statu . Note the script
 overwrites files in "targetDir" if they already exist - if you want to
 preserve results of a specific run, copy them somewhere else.
 
