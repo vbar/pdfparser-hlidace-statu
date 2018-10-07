@@ -1,0 +1,62 @@
+{
+    "name": "Seznam veřejných dobíjecích stanic",
+    "datasetId": "PublicChargingStations",
+    "origUrl": "https://www.mpo.cz/cz/energetika/statistika/statistika-cerpacich-stanic-pohonnych-hmot/seznam-verejnych-dobijecich-stanic-_-stav-k-26--6--2018--238590/",
+    "sourcecodeUrl": null,
+    "description": null,
+    "betaversion" : false,
+    "allowWriteAccess" : true,              
+    "jsonSchema": {
+	"description": "",
+	"type": "object",
+	"properties": {
+	    "zip": {
+		"type": "string",
+		"minLength": 5
+	    },
+	    "since": {
+		"type": "string",
+		"minLength": 8
+	    },
+	    "municipality": {
+		"type": "string",
+		"minLength": 1
+	    },
+	    "street": {
+		"type": "string",
+		"minLength": 1
+	    },
+	    "charging_point_count": {
+		"type": "number"
+	    },
+	    "lau1": {
+		"type": "string",
+		"minLength": 4
+	    },
+	    "Id": {
+		"type": "string",
+		"minLength": 1
+	    }
+	},
+	"required": [
+	    "zip",
+	    "since",
+	    "municipality",
+	    "street",
+	    "charging_point_count",
+	    "lau1",
+	    "Id"
+	]
+    },
+    "searchResultTemplate": {
+	"properties": [ "Id", "street", "zip", "municipality", "lau1", "charging_point_count", "since" ]
+    },
+    "detailTemplate": {
+	"header": "<h3>{Id}</h3>",
+	"item": "<table><tr><td>{street}</td><td>{zip}</td><td>{municipality}</td><td>{lau1}</td><td>{charging_point_count}</td><td>{since}</td></row></table>",
+	"footer": "",
+	"properties": null
+    }
+}
+    
+    
