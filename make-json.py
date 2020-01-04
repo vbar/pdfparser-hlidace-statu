@@ -1,10 +1,16 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import json
 import os
-from pdftables.pdf_document import PDFDocument
-from pdftables.pdftables import page_to_tables
-from puff import Puff
+import re
+from pdfminer.pdfparser import PDFParser
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfinterp import PDFResourceManager
+from pdfminer.pdfinterp import PDFPageInterpreter
+from pdfminer.layout import LAParams, LTTextBoxHorizontal
+from pdfminer.converter import PDFPageAggregator
+
 
 def get_mandatory(cfg, name):
     v = cfg.get(name)
@@ -13,59 +19,86 @@ def get_mandatory(cfg, name):
 
     return v
 
+
 def ensure_dir(d):
     if not os.path.exists(d):
         os.makedirs(d)
 
-# pdftables removes spaces from multi-word cells, although the
-# underlying PDFMiner parses them correctly - so let's process the
-# source twice: in this class with pdftables, and in the base with
-# PDFMiner, creating a map from shrunken to correct strings.
-class Generator(Puff):
+
+class Generator:
     def __init__(self, cfg):
-        Puff.__init__(self, get_mandatory(cfg, "sourceFile"))
+        self.source_file = get_mandatory(cfg, "sourceFile")
         self.target_dir = cfg.get("targetDir", "json")
         ensure_dir(self.target_dir)
+        self.space_rx = re.compile("\\s+")
 
     def run(self):
-        doc = PDFDocument.from_path(self.source_file)
+        with open(self.source_file, 'rb') as fp:
+            parser = PDFParser(fp)
+            document = PDFDocument(parser)
+            rsrcmgr = PDFResourceManager()
+            laparams = LAParams()
+            device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+            interpreter = PDFPageInterpreter(rsrcmgr, device)
+            first = True
+            for page in PDFPage.create_pages(document):
+                interpreter.process_page(page)
+                if first: # skip title page
+                    first = False
+                else:
+                    layout = device.get_result()
+                    self.process(layout)
 
-        for page_number, page in enumerate(doc.get_pages()):
-            if page_number: # skip title page
-                tables = page_to_tables(page)
-                for table in tables:
-                    for row in table.data:
-                        if len(row) == 8:
-                            row_id = None
-                            try:
-                                row_id = int(row[1])
-                            except ValueError:
-                                pass
+    def process(self, layout):
+        height = 0
+        columns = [] # of list of height length
+        for obj in layout:
+            if isinstance(obj, LTTextBoxHorizontal):
+                raw = obj.get_text()
+                col = raw.split("\n")
+                l = len(col)
+                # remember columns of maximum height
+                if l > height:
+                    height = l
+                    columns = []
 
-                            if row_id is not None:
-                                self.handle_row(row_id, row[2:])
-        
-    def handle_row(self, row_id, row_tail):
+                if l == height:
+                    columns.append(col)
+
+        if len(columns) != 7:
+            raise Exception("table not found")
+
+        for row in map(list, zip(*columns)): # transpose
+            self.handle_row(row)
+
+    def handle_row(self, row):
+        try:
+            row_id = int(row[0])
+        except ValueError:
+            return # skip empty row (normally last one on page)
+
         target_path = os.path.join(self.target_dir, "%d.json" % row_id)
-        with open(target_path, 'wb') as f:
+        with open(target_path, 'w') as f:
             json.dump({
                 "Id": str(row_id),
-                "street": self.reexpand(row_tail[0].strip()),
-                "zip": row_tail[1].strip(),
-                "municipality": self.reexpand(row_tail[2].strip()),
-                "lau1": row_tail[3].strip(),
-                "charging_point_count": int(row_tail[4]),
-                "since": row_tail[5].strip()
+                "street": self.respace(row[1]),
+                "zip": self.respace(row[2], ""),
+                "municipality": self.respace(row[3]),
+                "lau1": row[4].strip(),
+                "charging_point_count": int(row[5]),
+                "since": row[6].strip()
             }, f, ensure_ascii=False)
-    
+
+    def respace(self, item, repl=" "):
+        return self.space_rx.sub(repl, item.strip())
+
+
 def main():
     with open("config.json") as cf:
         cfg = json.load(cf)
 
     gen = Generator(cfg)
     gen.run()
-    
+
 if __name__ == "__main__":
     main()
-                        
-    
